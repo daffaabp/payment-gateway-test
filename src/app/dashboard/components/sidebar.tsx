@@ -9,7 +9,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
 import { PricingDialog } from "./pricing-dialog";
 
 interface MenuItem {
@@ -41,11 +40,6 @@ export function Sidebar({ className }: SidebarProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const [isPricingOpen, setIsPricingOpen] = useState(false);
 
-	const handleSelectPlan = (plan: string) => {
-		toast.success(`Anda memilih paket ${plan}. Silakan lanjutkan pembayaran.`);
-		setIsPricingOpen(false);
-	};
-
 	return (
 		<>
 			{/* Mobile Menu Button */}
@@ -59,11 +53,7 @@ export function Sidebar({ className }: SidebarProps) {
 			</Button>
 
 			{/* Pricing Dialog */}
-			<PricingDialog
-				open={isPricingOpen}
-				onOpenChange={setIsPricingOpen}
-				onSelectPlan={handleSelectPlan}
-			/>
+			<PricingDialog open={isPricingOpen} onOpenChange={setIsPricingOpen} />
 
 			{/* Sidebar */}
 			<div

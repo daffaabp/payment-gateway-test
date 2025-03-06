@@ -33,7 +33,7 @@ export default function Chat() {
 	// Referensi untuk area scroll dan pesan terakhir
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	const lastMessageRef = useRef<string>("");
-	
+
 	// State untuk jumlah token dan status loading awal
 	const [tokens, setTokens] = useState<number>(0);
 	const [isInitialLoad, setIsInitialLoad] = useState(true);

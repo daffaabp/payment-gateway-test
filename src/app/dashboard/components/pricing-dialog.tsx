@@ -17,11 +17,11 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
+import { toast } from "sonner";
 
 interface PricingDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	onSelectPlan: (plan: string) => void;
 }
 
 const plans = [
@@ -50,11 +50,28 @@ const plans = [
 	},
 ];
 
-export function PricingDialog({
-	open,
-	onOpenChange,
-	onSelectPlan,
-}: PricingDialogProps) {
+export function PricingDialog({ open, onOpenChange }: PricingDialogProps) {
+	const handleSelectPlan = async (planName: string) => {
+		try {
+			if (planName.toLowerCase() === "silver") {
+				const paymentLink = process.env.NEXT_PUBLIC_PAYMENT_LINK;
+				if (!paymentLink) {
+					throw new Error("Payment link not configured");
+				}
+				// Direct redirect to Silver package payment link
+				window.location.href = paymentLink;
+			} else {
+				// For Gold package
+				toast.info(
+					"Paket Gold akan segera tersedia. Silakan pilih paket Silver untuk saat ini.",
+				);
+			}
+		} catch (error) {
+			console.error("Error:", error);
+			toast.error("Terjadi kesalahan. Silakan coba lagi.");
+		}
+	};
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[650px]">
@@ -109,8 +126,8 @@ export function PricingDialog({
 							<CardFooter className="mt-auto">
 								<Button
 									className="w-full hover:opacity-90 transition-opacity"
-									variant={plan.popular ? "default" : "outline"} 
-									onClick={() => onSelectPlan(plan.name)}
+									variant={plan.popular ? "default" : "outline"}
+									onClick={() => handleSelectPlan(plan.name)}
 								>
 									Pilih {plan.name}
 								</Button>
