@@ -12,16 +12,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export default function Chat() {
+	// Inisialisasi hook useChat untuk mengelola state dan fungsi chat
 	const {
-		messages,
-		input,
-		handleInputChange,
-		handleSubmit: handleChatSubmit,
-		isLoading: isChatLoading,
+		messages, // Array pesan chat
+		input, // Input teks saat ini
+		handleInputChange, // Handler perubahan input
+		handleSubmit: handleChatSubmit, // Handler submit chat
+		isLoading: isChatLoading, // Status loading
 	} = useChat({
 		api: "/api/chat",
 		onError: (error) => {
-			// Revert optimistic update if error is about tokens
+			// Mengembalikan token jika error karena token tidak cukup
 			if (error.message === "Insufficient tokens") {
 				setTokens((prevTokens) => prevTokens + 1);
 			}
@@ -29,12 +30,15 @@ export default function Chat() {
 		},
 	});
 
+	// Referensi untuk area scroll dan pesan terakhir
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	const lastMessageRef = useRef<string>("");
+	
+	// State untuk jumlah token dan status loading awal
 	const [tokens, setTokens] = useState<number>(0);
 	const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-	// Fetch token count
+	// Fungsi untuk mengambil jumlah token dari API
 	const fetchTokens = useCallback(async () => {
 		try {
 			const response = await fetch("/api/chat/token");
@@ -54,15 +58,16 @@ export default function Chat() {
 		}
 	}, []);
 
-	// Load tokens on mount
+	// Effect untuk mengambil token saat komponen dimount
 	useEffect(() => {
 		fetchTokens();
 	}, [fetchTokens]);
 
-	// Optimistic token update
+	// Handler submit dengan optimistic update token
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
+		// Cek apakah token masih tersedia
 		if (tokens <= 0) {
 			toast.error(
 				"Token Anda habis! Silakan hubungi admin untuk menambah token.",
@@ -70,18 +75,18 @@ export default function Chat() {
 			return;
 		}
 
-		// Optimistic update
+		// Update optimistic token (mengurangi token sebelum request selesai)
 		setTokens((prev) => prev - 1);
 
 		try {
 			await handleChatSubmit(e);
 		} catch (error) {
 			console.error("Error:", error);
-			// Token will be reverted by onError callback if needed
+			// Token akan dikembalikan oleh callback onError jika diperlukan
 		}
 	};
 
-	// Scroll to bottom function
+	// Fungsi untuk scroll ke bagian bawah chat
 	const scrollToBottom = useCallback(() => {
 		const scrollArea = scrollAreaRef.current;
 		if (scrollArea) {
@@ -96,7 +101,7 @@ export default function Chat() {
 		}
 	}, []);
 
-	// Auto scroll to bottom when new message arrives
+	// Effect untuk auto-scroll saat ada pesan baru
 	useEffect(() => {
 		const currentLastMessage = messages[messages.length - 1]?.content;
 		if (currentLastMessage && currentLastMessage !== lastMessageRef.current) {
