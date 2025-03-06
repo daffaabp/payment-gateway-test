@@ -36,10 +36,7 @@ function ThankYouContent() {
 
 	// Ambil parameter dari URL
 	const licenseCode = searchParams.get("licenseCode");
-	const email = searchParams.get("email");
-	const productId = searchParams.get("productId");
 	const name = searchParams.get("name");
-	const phone = searchParams.get("phone");
 
 	// Anggap pembayaran berhasil jika ada licenseCode
 	const isPaid = !!licenseCode;
