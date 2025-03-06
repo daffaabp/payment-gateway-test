@@ -33,7 +33,7 @@ export default function Chat() {
 	// Referensi untuk area scroll dan pesan terakhir
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	const lastMessageRef = useRef<string>("");
-	
+
 	// State untuk jumlah token dan status loading awal
 	const [tokens, setTokens] = useState<number>(0);
 	const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -182,7 +182,7 @@ export default function Chat() {
 												<>
 													<AvatarImage src="/images/avatar/ai.jpg" />
 													<AvatarFallback className="bg-zinc-800 text-zinc-100">
-														AI
+														Wulang AI
 													</AvatarFallback>
 												</>
 											)}
@@ -195,7 +195,7 @@ export default function Chat() {
 										>
 											<div className="flex items-center gap-2">
 												<span className="text-sm font-medium">
-													{message.role === "user" ? "Anda" : "AI Assistant"}
+													{message.role === "user" ? "Anda" : "Wulang AI"}
 												</span>
 											</div>
 											<div
