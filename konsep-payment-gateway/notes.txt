@@ -1,0 +1,44 @@
+Materi Bahan Belajar :
+
+1. Konsep Dasar Payment Gateway
+- Apa itu payment gateway?
+- Bagaimana flow pembayaran bekerja?
+- Kenapa kita butuh payment gateway?
+
+2. Webhook
+- Apa sebenarnya webhook itu?
+- Kenapa tidak pakai polling?
+- Bagaimana cara kerjanya?
+
+3. Keamanan
+- Kenapa perlu verifikasi signature?
+- Bagaimana data sensitif dilindungi?
+- Best practices keamanan
+
+4. Arsitektur Sistem
+- Bagaimana komponen-komponen berinteraksi?
+- Flow data seperti apa?
+
+
+Konsep Fundamental:
+
+1. Payment Gateway
+- Payment gateway adalah layanan yang memproses transaksi pembayaran online
+- Bertindak sebagai perantara antara customer, merchant (Anda), dan bank
+- Flow dasar pembayaran:
+  a. Customer memilih metode pembayaran
+  b. Payment gateway membuat invoice/bill
+  c. Customer melakukan pembayaran
+  d. Payment gateway memproses pembayaran
+  e. Merchant mendapat notifikasi hasil pembayaran
+
+2. Webhook dalam Konteks Payment
+- Webhook adalah "callback HTTP" atau "reverse API"
+- Ketika ada update status pembayaran, payment gateway akan mengirim HTTP POST ke endpoint yang kita sediakan
+- Analoginya seperti: Daripada kita terus-menerus bertanya "Sudah dibayar belum?" (polling), lebih baik payment gateway yang memberi tahu kita ketika ada update
+
+3. Kenapa Perlu Webhook?
+- Real-time update
+- Hemat resource (dibanding polling)
+- Tidak ada delay dalam pemrosesan
+- Dapat segera update status pesanan customer
