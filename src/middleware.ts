@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Define protected routes that require authentication
-const protectedRoutes = ["/dashboard"];
+const protectedRoutes = ["/dashboard", "/chat"];
 
 export async function middleware(request: NextRequest) {
 	const response = NextResponse.next();
@@ -33,5 +33,5 @@ export async function middleware(request: NextRequest) {
 
 // Configure the middleware to run only on protected paths
 export const config = {
-	matcher: ["/dashboard/:path*"],
+	matcher: ["/dashboard/:path*", "/chat/:path*"],
 };
