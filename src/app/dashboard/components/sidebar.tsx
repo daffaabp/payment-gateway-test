@@ -4,17 +4,13 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SessionData } from "@/lib/sessions";
 import { cn } from "@/lib/utils";
-import {
-	Home,
-	Menu,
-	MessageCircle,
-	CreditCard,
-	X,
-} from "lucide-react";
+import { CreditCard, Home, Menu, MessageCircle, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
+import { PricingDialog } from "./pricing-dialog";
 
 interface MenuItem {
 	title: string;
@@ -43,6 +39,12 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 export function Sidebar({ className }: SidebarProps) {
 	const pathname = usePathname();
 	const [isOpen, setIsOpen] = useState(false);
+	const [isPricingOpen, setIsPricingOpen] = useState(false);
+
+	const handleSelectPlan = (plan: string) => {
+		toast.success(`Anda memilih paket ${plan}. Silakan lanjutkan pembayaran.`);
+		setIsPricingOpen(false);
+	};
 
 	return (
 		<>
@@ -55,6 +57,13 @@ export function Sidebar({ className }: SidebarProps) {
 			>
 				{isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
 			</Button>
+
+			{/* Pricing Dialog */}
+			<PricingDialog
+				open={isPricingOpen}
+				onOpenChange={setIsPricingOpen}
+				onSelectPlan={handleSelectPlan}
+			/>
 
 			{/* Sidebar */}
 			<div
@@ -108,15 +117,16 @@ export function Sidebar({ className }: SidebarProps) {
 							<span className="font-medium text-sm">Paket Berlangganan</span>
 						</div>
 						<p className="text-xs text-muted-foreground leading-relaxed">
-							Tingkatkan akses Anda dengan berlangganan premium untuk fitur lebih lengkap
+							Tingkatkan akses Anda dengan berlangganan premium untuk fitur
+							lebih lengkap
 						</p>
-						<Link
-							href="/dashboard"
+						<Button
+							onClick={() => setIsPricingOpen(true)}
 							className="flex items-center justify-center gap-2 w-full bg-primary/10 hover:bg-primary/20 text-primary rounded-md py-1.5 text-sm font-medium transition-colors"
 						>
 							<CreditCard className="h-4 w-4" />
 							Lihat Paket
-						</Link>
+						</Button>
 					</div>
 				</div>
 
