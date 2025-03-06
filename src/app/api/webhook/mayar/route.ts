@@ -31,6 +31,7 @@ function verifyWebhookSignature(signature: string): boolean {
 export async function POST(req: Request) {
 	try {
 		// Log semua headers untuk debugging
+		console.log("=== WEBHOOK DEBUG START ===");
 		console.log("Headers:", Object.fromEntries(req.headers.entries()));
 
 		// Ambil signature dari header request
@@ -39,11 +40,8 @@ export async function POST(req: Request) {
 
 		// Ambil body request dalam bentuk text mentah
 		const body = await req.text();
+		console.log("Raw Body:", body);
 		console.log("Body length:", body.length);
-		console.log(
-			"Body preview:",
-			body.substring(0, 100) + (body.length > 100 ? "..." : ""),
-		);
 
 		// Verifikasi signature webhook
 		if (!signature) {
@@ -58,10 +56,12 @@ export async function POST(req: Request) {
 
 		// Parse body JSON menjadi object JavaScript
 		const payload = JSON.parse(body);
+		console.log("Parsed Payload:", JSON.stringify(payload, null, 2));
+
 		// Destructuring untuk mengambil event dan data dari payload
 		const { event, data } = payload;
-		console.log("Event:", event);
-		console.log("Data:", data);
+		console.log("Event Type:", event);
+		console.log("Event Data:", JSON.stringify(data, null, 2));
 
 		// Jika event testing, kirim response sukses
 		if (event === "testing") {
@@ -91,27 +91,43 @@ export async function POST(req: Request) {
 			return NextResponse.json({ error: "User not found" }, { status: 404 });
 		}
 
+		console.log("Found user:", user.id);
+
 		// Handle berbagai jenis event dari webhook
 		switch (event) {
 			case "payment.success":
+			case "payment.received": {
 				// Jika pembayaran berhasil, tambahkan token sesuai paket
-				console.log("Processing payment.success for user:", user.id);
-				await addTokensByPackage(user.id, data.package);
+				console.log("Processing payment event");
+				// Ambil package type dari membershipTierName
+				const packageType = data.membershipTierName
+					?.toLowerCase()
+					.includes("silver")
+					? "silver"
+					: "gold";
+				console.log("Package Type:", packageType);
+				await addTokensByPackage(user.id, packageType);
+				console.log("Tokens added successfully");
 				break;
+			}
 
-			case "subscription.activated":
+			case "subscription.activated": {
 				// Jika subscription diaktifkan, update status subscription
-				console.log("Processing subscription.activated for user:", user.id);
+				console.log("Processing subscription.activated");
 				await updateSubscription(
 					user.id,
 					data.licenseCode,
 					new Date(data.expiredAt),
 				);
+				console.log("Subscription updated successfully");
 				break;
+			}
 
 			default:
 				console.log("Unhandled event type:", event);
 		}
+
+		console.log("=== WEBHOOK DEBUG END ===");
 
 		// Kirim response sukses
 		return NextResponse.json({ success: true });

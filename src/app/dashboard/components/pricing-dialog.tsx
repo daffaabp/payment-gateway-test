@@ -60,11 +60,13 @@ export function PricingDialog({ open, onOpenChange }: PricingDialogProps) {
 				}
 				// Direct redirect to Silver package payment link
 				window.location.href = paymentLink;
-			} else {
-				// For Gold package
-				toast.info(
-					"Paket Gold akan segera tersedia. Silakan pilih paket Silver untuk saat ini.",
-				);
+			} else if (planName.toLowerCase() === "gold") {
+				const paymentLink = process.env.NEXT_PUBLIC_PAYMENT_LINK;
+				if (!paymentLink) {
+					throw new Error("Payment link not configured");
+				}
+				// Direct redirect to Gold package payment link
+				window.location.href = paymentLink;
 			}
 		} catch (error) {
 			console.error("Error:", error);

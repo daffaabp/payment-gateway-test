@@ -35,26 +35,31 @@ function ThankYouContent() {
 	const searchParams = useSearchParams();
 
 	// Ambil parameter dari URL
-	const status = searchParams.get("status");
-	const transactionId = searchParams.get("transaction_id");
-	const packageType = searchParams.get("package");
+	const licenseCode = searchParams.get("licenseCode");
+	const email = searchParams.get("email");
+	const productId = searchParams.get("productId");
+	const name = searchParams.get("name");
+	const phone = searchParams.get("phone");
+
+	// Anggap pembayaran berhasil jika ada licenseCode
+	const isPaid = !!licenseCode;
 
 	// Auto redirect ke chat jika sukses setelah 5 detik
 	useEffect(() => {
-		if (status === "paid") {
+		if (isPaid) {
 			const timer = setTimeout(() => {
 				router.push("/chat");
 			}, 5000);
 
 			return () => clearTimeout(timer);
 		}
-	}, [status, router]);
+	}, [isPaid, router]);
 
 	return (
 		<Card className="w-full max-w-md">
 			<CardHeader>
 				<CardTitle className="text-2xl text-center flex items-center justify-center gap-2">
-					{status === "paid" ? (
+					{isPaid ? (
 						<>
 							<CheckCircle2 className="w-8 h-8 text-green-500" />
 							<span>Pembayaran Berhasil!</span>
@@ -68,16 +73,16 @@ function ThankYouContent() {
 				</CardTitle>
 			</CardHeader>
 			<CardContent className="text-center space-y-4">
-				{status === "paid" ? (
+				{isPaid ? (
 					<>
 						<p className="text-green-600">
-							Terima kasih telah berlangganan paket {packageType?.toUpperCase()}
+							Terima kasih telah berlangganan, {name}!
 						</p>
 						<p className="text-muted-foreground">
 							Anda akan dialihkan ke halaman chat dalam 5 detik...
 						</p>
 						<p className="text-xs text-muted-foreground">
-							ID Transaksi: {transactionId}
+							License Code: {licenseCode}
 						</p>
 					</>
 				) : (
@@ -87,12 +92,8 @@ function ThankYouContent() {
 				)}
 			</CardContent>
 			<CardFooter className="flex justify-center">
-				<Button
-					onClick={() =>
-						router.push(status === "paid" ? "/chat" : "/dashboard")
-					}
-				>
-					{status === "paid" ? "Ke Halaman Chat" : "Kembali ke Dashboard"}
+				<Button onClick={() => router.push(isPaid ? "/chat" : "/dashboard")}>
+					{isPaid ? "Ke Halaman Chat" : "Kembali ke Dashboard"}
 				</Button>
 			</CardFooter>
 		</Card>
