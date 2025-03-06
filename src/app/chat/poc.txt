@@ -1,0 +1,135 @@
+IMPLEMENTASI MANAJEMEN CHAT TOKEN (5 LANGKAH)
+
+Langkah 1: Setup Database
+------------------------
+- Buat model ChatToken di schema.prisma:
+```prisma
+model ChatToken {
+    id        String   @id @default(cuid())
+    userId    String   @unique
+    remaining Int      @default(15)    // Token tersisa, default 15
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("chat_tokens")
+}
+```
+- Update model User untuk relasi dengan ChatToken
+- Jalankan prisma migrate
+
+Langkah 2: Implementasi Auto-Create Token
+---------------------------------------
+- Buat fungsi di auth-actions.ts untuk create token saat user register:
+```typescript
+async function createInitialChatToken(userId: string) {
+    return await prisma.chatToken.create({
+        data: {
+            userId,
+            remaining: 15 // Default token untuk user baru
+        }
+    });
+}
+```
+- Panggil fungsi ini setelah user berhasil register
+
+Langkah 3: Token Check & Update System
+------------------------------------
+- Buat API endpoint untuk cek token:
+```typescript
+// GET /api/chat/token
+async function getTokenCount(userId: string) {
+    const token = await prisma.chatToken.findUnique({
+        where: { userId }
+    });
+    return token?.remaining ?? 0;
+}
+```
+
+- Buat API endpoint untuk update token:
+```typescript
+// POST /api/chat/token/use
+async function useToken(userId: string) {
+    const token = await prisma.chatToken.findUnique({
+        where: { userId }
+    });
+
+    if (!token || token.remaining <= 0) {
+        throw new Error("Insufficient tokens");
+    }
+
+    return await prisma.chatToken.update({
+        where: { userId },
+        data: { remaining: token.remaining - 1 }
+    });
+}
+```
+
+Langkah 4: Integrasi dengan Chat Component
+----------------------------------------
+```typescript
+export default function Chat() {
+    const { messages, input } = useChat();
+    const [tokens, setTokens] = useState<number>(15);
+    
+    // Cek token sebelum kirim pesan
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        
+        if (tokens <= 0) {
+            toast.error("Token Anda habis!");
+            return;
+        }
+
+        try {
+            // Kurangi token
+            await fetch('/api/chat/token/use', { method: 'POST' });
+            setTokens(prev => prev - 1);
+            
+            // Lanjutkan dengan chat
+            // ... existing chat logic
+        } catch (error) {
+            toast.error("Gagal menggunakan token");
+        }
+    };
+
+    return (
+        <>
+            {/* Tampilkan sisa token di header */}
+            <div className="token-display">
+                Sisa Token: {tokens}
+            </div>
+            
+            {/* Disable input jika token habis */}
+            <Input disabled={tokens <= 0} />
+            <Button disabled={tokens <= 0}>
+                Kirim
+            </Button>
+        </>
+    );
+}
+```
+
+Langkah 5: Error Handling & User Feedback
+---------------------------------------
+1. Tampilan saat token habis:
+   - Disable input chat
+   - Tampilkan pesan "Token Anda habis"
+   - (Optional) Tambahkan CTA untuk top up
+
+2. Handling edge cases:
+   - Koneksi terputus saat update token
+   - Race condition saat multiple chat requests
+   - Error saat update token
+
+3. User feedback:
+   - Toast notification saat token berkurang
+   - Warning saat token tinggal sedikit (misal < 5)
+   - Konfirmasi sebelum menggunakan token
+
+CATATAN TAMBAHAN:
+----------------
+- Semua operasi token harus atomic untuk mencegah race condition
+- Implementasikan error boundary untuk handling kasus token habis
+- Pertimbangkan bulk token updates untuk optimasi performa
+- Tambahkan logging untuk audit trail penggunaan token

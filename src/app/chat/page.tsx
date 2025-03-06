@@ -8,17 +8,77 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useChat } from "@ai-sdk/react";
 import { Coins, MessageCircle, Send, User } from "lucide-react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 export default function Chat() {
-	const { messages, input, handleInputChange, handleSubmit } = useChat();
+	const {
+		messages,
+		input,
+		handleInputChange,
+		handleSubmit: handleChatSubmit,
+		isLoading: isChatLoading,
+	} = useChat({
+		api: "/api/chat",
+		onError: (error) => {
+			// Revert optimistic update if error is about tokens
+			if (error.message === "Insufficient tokens") {
+				setTokens((prevTokens) => prevTokens + 1);
+			}
+			toast.error(error.message || "Terjadi kesalahan");
+		},
+	});
+
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	const lastMessageRef = useRef<string>("");
+	const [tokens, setTokens] = useState<number>(0);
+	const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-	// Dummy token data
-	const tokenData = {
-		used: 10,
-		total: 20,
+	// Fetch token count
+	const fetchTokens = useCallback(async () => {
+		try {
+			const response = await fetch("/api/chat/token");
+			const data = await response.json();
+
+			if (response.ok) {
+				setTokens(data.remaining);
+			} else {
+				console.error("Error fetching tokens:", data.error);
+				toast.error("Gagal mengambil data token");
+			}
+		} catch (error) {
+			console.error("Error fetching tokens:", error);
+			toast.error("Gagal mengambil data token");
+		} finally {
+			setIsInitialLoad(false);
+		}
+	}, []);
+
+	// Load tokens on mount
+	useEffect(() => {
+		fetchTokens();
+	}, [fetchTokens]);
+
+	// Optimistic token update
+	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+		e.preventDefault();
+
+		if (tokens <= 0) {
+			toast.error(
+				"Token Anda habis! Silakan hubungi admin untuk menambah token.",
+			);
+			return;
+		}
+
+		// Optimistic update
+		setTokens((prev) => prev - 1);
+
+		try {
+			await handleChatSubmit(e);
+		} catch (error) {
+			console.error("Error:", error);
+			// Token will be reverted by onError callback if needed
+		}
 	};
 
 	// Scroll to bottom function
@@ -55,10 +115,33 @@ export default function Chat() {
 							<MessageCircle className="h-5 w-5 text-primary" />
 							<h2 className="text-lg font-semibold">Chat AI</h2>
 						</div>
-						<div className="flex items-center gap-2 rounded-full bg-muted px-3 py-1.5">
-							<Coins className="h-4 w-4 text-primary" />
-							<span className="text-sm font-medium">
-								{tokenData.used} / {tokenData.total} Token
+						<div
+							className={cn(
+								"flex items-center gap-2 rounded-full px-3 py-1.5 transition-colors duration-200",
+								isInitialLoad
+									? "bg-muted"
+									: tokens > 5
+										? "bg-muted"
+										: "bg-red-100 dark:bg-red-900/20",
+							)}
+						>
+							<Coins
+								className={cn(
+									"h-4 w-4",
+									isInitialLoad
+										? "text-primary"
+										: tokens > 5
+											? "text-primary"
+											: "text-red-500",
+								)}
+							/>
+							<span
+								className={cn(
+									"text-sm font-medium",
+									isInitialLoad ? "" : tokens > 5 ? "" : "text-red-500",
+								)}
+							>
+								{isInitialLoad ? "Memuat..." : `${tokens} Token Tersisa`}
 							</span>
 						</div>
 					</div>
@@ -142,13 +225,17 @@ export default function Chat() {
 						<Input
 							value={input}
 							onChange={handleInputChange}
-							placeholder="Ketik pesan Anda..."
+							placeholder={
+								tokens <= 0 ? "Token Anda habis" : "Ketik pesan Anda..."
+							}
 							className="flex-1"
+							disabled={tokens <= 0 || isChatLoading}
 						/>
 						<Button
 							type="submit"
 							size="icon"
 							className="h-10 w-10 shrink-0 rounded-full"
+							disabled={tokens <= 0 || isChatLoading}
 						>
 							<Send className="h-4 w-4" />
 							<span className="sr-only">Kirim pesan</span>
