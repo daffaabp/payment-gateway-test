@@ -1312,7 +1312,6 @@ SELECT * FROM user_subscription;
     │              │                │
     ├─ Beli Token ─┤                │
     │              │                │
-    │              ├── Webhook ────►│
     │              │                │
     │              │    Update DB   │
     │              │   ┌─────────┐  │
@@ -1394,3 +1393,272 @@ Update otomatis dari Mayar:
 3. Data selalu sinkron
 4. Perlu handling yang baik
 5. Perlu monitoring dan logging
+
+## Penjelasan Detail Webhook Route.ts untuk Pemula
+
+### Pendahuluan: Apa itu Webhook?
+
+Bayangkan webhook seperti seorang petugas pos khusus yang:
+1. Selalu siap menerima paket (notifikasi) dari Mayar
+2. Memeriksa keaslian paket (verifikasi)
+3. Memproses isi paket (menambah token/update subscription)
+4. Mengirim konfirmasi ke pengirim (response)
+
+### Penjelasan Kode Baris per Baris
+
+#### 1. Setup Awal (Import)
+```typescript
+import { prisma } from "@/lib/prisma";
+import { addTokensByPackage, updateSubscription } from "@/lib/subscription";
+import { NextResponse } from "next/server";
+```
+**Penjelasan Sederhana:**
+- Seperti menyiapkan alat-alat sebelum bekerja:
+  - `prisma`: Buku catatan untuk menyimpan data (database)
+  - `addTokensByPackage`: Alat untuk menambah token
+  - `updateSubscription`: Alat untuk update langganan
+  - `NextResponse`: Alat untuk membalas pesan
+
+#### 2. Fungsi Verifikasi Tanda Tangan
+```typescript
+function verifyWebhookSignature(signature: string): boolean {
+    const webhookSecret = process.env.MAYAR_WEBHOOK_SECRET;
+    // ...
+}
+```
+**Analogi:**
+- Ini seperti petugas keamanan yang memeriksa KTP:
+  - `signature`: KTP yang ditunjukkan tamu (Mayar)
+  - `webhookSecret`: Data KTP yang kita punya
+  - Fungsi ini memastikan tamu benar-benar dari Mayar
+
+**Detail Langkah:**
+1. Ambil webhook secret dari "brankas" (environment variables)
+2. Catat di log apakah secret ada dan berapa panjangnya
+3. Bandingkan dengan tanda tangan yang diterima
+4. Beri tahu hasilnya (benar/salah)
+
+#### 3. Fungsi Utama POST
+```typescript
+export async function POST(req: Request) {
+    try {
+        // ...
+    } catch (error) {
+        // ...
+    }
+}
+```
+**Analogi:**
+- Seperti loket pelayanan di kantor pos:
+  - `POST`: Hanya melayani pengiriman paket
+  - `async`: Bisa melayani sambil mengerjakan hal lain
+  - `try-catch`: Prosedur keselamatan kerja
+
+#### 4. Memeriksa Headers
+```typescript
+console.log("Headers:", Object.fromEntries(req.headers.entries()));
+const signature = req.headers.get("x-callback-token");
+```
+**Analogi:**
+- Seperti memeriksa amplop surat:
+  - Headers = informasi di amplop (pengirim, tujuan, dll)
+  - `x-callback-token` = stempel resmi dari Mayar
+  - Logging = mencatat di buku untuk jaga-jaga
+
+#### 5. Membaca Body Request
+```typescript
+const body = await req.text();
+console.log("Raw Body:", body);
+```
+**Analogi:**
+- Seperti membuka dan membaca isi surat:
+  - `req.text()`: Membuka amplop
+  - Logging isi: Memfotokopi surat untuk arsip
+  - `await`: Tunggu sampai selesai baca
+
+#### 6. Verifikasi Keamanan
+```typescript
+if (!signature) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+}
+```
+**Analogi:**
+- Seperti prosedur keamanan:
+  - Cek ada tidaknya stempel resmi
+  - Kalau tidak ada, tolak surat
+  - 401 = "Maaf, identitas tidak valid"
+
+#### 7. Parse JSON dan Cek Event
+```typescript
+const payload = JSON.parse(body);
+const { event, data } = payload;
+```
+**Analogi:**
+- Seperti menerjemahkan surat:
+  - JSON.parse = menerjemahkan bahasa komputer
+  - `event` = jenis berita (pembayaran/langganan)
+  - `data` = detail beritanya
+
+#### 8. Handle Event Testing
+```typescript
+if (event === "testing") {
+    return NextResponse.json({ success: true });
+}
+```
+**Analogi:**
+- Seperti latihan pengiriman:
+  - Mayar: "Halo, ini cuma test ya!"
+  - Kita: "Oke, diterima!"
+  - Tidak perlu diproses lebih lanjut
+
+#### 9. Validasi Email dan Cari User
+```typescript
+const userEmail = data.customerEmail || data.customer?.email;
+const user = await prisma.user.findUnique({
+    where: { email: userEmail }
+});
+```
+**Analogi:**
+- Seperti mencari penerima paket:
+  - Email = alamat penerima
+  - `findUnique` = cari di buku tamu
+  - Kalau tidak ketemu = paket tidak bisa diantar
+
+#### 10. Proses Event Berdasarkan Jenisnya
+```typescript
+switch (event) {
+    case "payment.success":
+    case "payment.received": {
+        // Proses pembayaran
+    }
+    case "subscription.activated": {
+        // Proses langganan
+    }
+}
+```
+**Analogi:**
+- Seperti memilah jenis paket:
+  - Pembayaran = tambah token
+  - Langganan = update status member
+  - Default = paket jenis lain
+
+#### 11. Menambah Token (Payment Success)
+```typescript
+const packageType = data.membershipTierName?.toLowerCase().includes("silver") 
+    ? "silver" 
+    : "gold";
+await addTokensByPackage(user.id, packageType);
+```
+**Analogi:**
+- Seperti mengisi pulsa:
+  - Cek jenis paket (Silver/Gold)
+  - Tambah token sesuai paket
+  - Catat di sistem
+
+#### 12. Update Subscription
+```typescript
+await updateSubscription(
+    user.id,
+    data.licenseCode,
+    new Date(data.expiredAt)
+);
+```
+**Analogi:**
+- Seperti perpanjang membership:
+  - Catat kode member baru
+  - Set tanggal expired
+  - Aktifkan status member
+
+#### 13. Error Handling
+```typescript
+catch (error) {
+    console.error("Webhook error:", error);
+    return NextResponse.json(
+        { error: "Internal server error" },
+        { status: 500 }
+    );
+}
+```
+**Analogi:**
+- Seperti prosedur darurat:
+  - Terjadi masalah = catat di log
+  - Beritahu Mayar ada masalah
+  - Status 500 = "Maaf, ada masalah internal"
+
+### Flow Lengkap dengan Analogi Sehari-hari
+
+Bayangkan webhook seperti kantor pos khusus:
+
+1. **Penerimaan Paket (Request Masuk)**
+   ```plaintext
+   Mayar (Pengirim) ──> Kantor Pos (Webhook) ──> Aplikasi (Penerima)
+   ```
+
+2. **Pemeriksaan Keamanan (Verifikasi)**
+   ```plaintext
+   - Cek stempel resmi (signature)
+   - Cek identitas pengirim (Mayar)
+   - Cek kelengkapan dokumen (payload)
+   ```
+
+3. **Pemrosesan Paket (Handle Event)**
+   ```plaintext
+   Jika Pembayaran:
+   - Cek jenis paket (Silver/Gold)
+   - Tambah token ke akun user
+   - Catat transaksi
+
+   Jika Langganan:
+   - Update status member
+   - Set tanggal expired
+   - Aktifkan fitur premium
+   ```
+
+4. **Konfirmasi (Response)**
+   ```plaintext
+   - Sukses = "Paket diterima dan diproses"
+   - Gagal = "Maaf, ada masalah" + detail error
+   ```
+
+### Tips Debug untuk Pemula
+
+1. **Cek Log Headers**
+   ```typescript
+   // Lihat informasi di "amplop"
+   console.log("DETAIL KIRIMAN:");
+   console.log("- Dari:", req.headers.get("user-agent"));
+   console.log("- Tanda Tangan:", signature);
+   ```
+
+2. **Cek Isi Webhook**
+   ```typescript
+   // Lihat isi "paket"
+   console.log("ISI PAKET:");
+   console.log("- Jenis:", event);
+   console.log("- Detail:", data);
+   ```
+
+3. **Cek Proses Token**
+   ```typescript
+   // Lihat proses "pengisian pulsa"
+   console.log("UPDATE TOKEN:");
+   console.log("- User:", user.id);
+   console.log("- Paket:", packageType);
+   console.log("- Jumlah Token:", tokenAmount);
+   ```
+
+### Kesimpulan
+
+Webhook route.ts adalah seperti kantor pos digital yang:
+1. Menerima notifikasi dari Mayar
+2. Memastikan keamanan dan keaslian
+3. Memproses pembayaran dan langganan
+4. Mengupdate data user secara otomatis
+5. Memberi konfirmasi ke Mayar
+
+Dengan sistem ini, user tidak perlu:
+1. Refresh halaman terus-menerus
+2. Cek status pembayaran manual
+3. Menunggu admin memproses
+
+Semua terjadi otomatis dan real-time! 🚀
